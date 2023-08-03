@@ -1,0 +1,142 @@
+{
+  "name": "kafka_offline_partition_detected",
+  "description": "This incident type occurs when a partition in a Kafka cluster is offline, meaning that it is not currently being served by an active leader. This can cause disruptions to data processing and delivery, and requires investigation and resolution to ensure that the cluster is functioning properly.",
+  "params": [
+    {
+      "name": "KAFKA_BROKER_LOG_FILE",
+      "value": ""
+    },
+    {
+      "name": "NEW_REPLICATION_FACTOR",
+      "value": ""
+    },
+    {
+      "name": "PARTITION_COUNT",
+      "value": ""
+    },
+    {
+      "name": "ZOOKEEPER_URL",
+      "value": ""
+    },
+    {
+      "name": "KAFKA_BROKER_SERVICE_NAME",
+      "value": ""
+    },
+    {
+      "name": "TOPIC_NAME",
+      "value": ""
+    },
+    {
+      "name": "OFFLINE_PARTITION_TOPIC",
+      "value": ""
+    },
+    {
+      "name": "PARTITION_NUMBER",
+      "value": ""
+    },
+    {
+      "name": "HOST_NAME",
+      "value": ""
+    },
+    {
+      "name": "K8S_CLUSTER_NAME",
+      "value": ""
+    },
+    {
+      "name": "NAMESPACE",
+      "value": ""
+    }
+  ],
+  "cells": [
+    {
+      "name": "cell_1",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Kafka Offline Partition Detected\nThis incident type occurs when a partition in a Kafka cluster is offline, meaning that it is not currently being served by an active leader. This can cause disruptions to data processing and delivery, and requires investigation and resolution to ensure that the cluster is functioning properly."
+    },
+    {
+      "name": "cell_2",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Step 1: Check if Kafka is running"
+    },
+    {
+      "name": "cell_3",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `systemctl status kafka`"
+    },
+    {
+      "name": "cell_4",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Step 2: Check the status of the offline partition"
+    },
+    {
+      "name": "cell_5",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `/kafka-topics.sh --describe --zookeeper ${ZOOKEEPER_URL} --topic ${OFFLINE_PARTITION_TOPIC}`"
+    },
+    {
+      "name": "cell_6",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Step 3: Check the replication factor for the topic"
+    },
+    {
+      "name": "cell_7",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `/kafka-topics.sh --zookeeper ${ZOOKEEPER_URL}  --describe --topic ${OFFLINE_PARTITION_TOPIC} | grep ReplicationFactor`"
+    },
+    {
+      "name": "cell_8",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Step 4: Check the ISR count for the topic"
+    },
+    {
+      "name": "cell_9",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `/kafka-topics.sh --zookeeper ${ZOOKEEPER_URL}  --describe --topic ${OFFLINE_PARTITION_TOPIC} | grep \"Isr:\"`"
+    },
+    {
+      "name": "cell_10",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Step 5: Check the Kafka logs for any errors or warnings related to the offline partition"
+    },
+    {
+      "name": "cell_11",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `tail -f /opt/kafka/logs/server.log | grep ${OFFLINE_PARTITION_TOPIC}`"
+    },
+    {
+      "name": "cell_12",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Kafka broker nodes are overloaded or underprovisioned."
+    },
+    {
+      "name": "cell_13",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "host | host_name=$HOST_NAME | invoke_kafka_partition_check($TOPIC_NAME, $PARTITION_NUMBER)"
+    },
+    {
+      "name": "cell_14",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Increase the replication factor of the Kafka topic where the offline partition occurred. This will create additional replicas of the partition and reduce the likelihood of data loss."
+    },
+    {
+      "name": "cell_15",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "host | host_name=$HOST_NAME | invoke_increase_kafka_topic_replication($NEW_REPLICATION_FACTOR, $PARTITION_COUNT, $ZOOKEEPER_URL, $TOPIC_NAME)"
+    }
+  ]
+}
