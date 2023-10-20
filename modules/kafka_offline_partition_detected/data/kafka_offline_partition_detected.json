@@ -1,25 +1,9 @@
 {
   "name": "kafka_offline_partition_detected",
-  "description": "This incident type occurs when a partition in a Kafka cluster is offline, meaning that it is not currently being served by an active leader. This can cause disruptions to data processing and delivery, and requires investigation and resolution to ensure that the cluster is functioning properly.",
+  "description": "When a Kafka partition becomes offline, it means that the partition is no longer available for reading and writing data. This can occur due to various reasons such as hardware failure, network issues, or software bugs. When a Kafka offline partition is detected, it can impact the availability and reliability of the entire system. It is important to quickly troubleshoot and resolve the issue to minimize the impact on the system.",
   "params": [
     {
-      "name": "KAFKA_BROKER_LOG_FILE",
-      "value": ""
-    },
-    {
-      "name": "NEW_REPLICATION_FACTOR",
-      "value": ""
-    },
-    {
-      "name": "PARTITION_COUNT",
-      "value": ""
-    },
-    {
-      "name": "ZOOKEEPER_URL",
-      "value": ""
-    },
-    {
-      "name": "KAFKA_BROKER_SERVICE_NAME",
+      "name": "BOOTSTRAP_SERVER",
       "value": ""
     },
     {
@@ -27,7 +11,15 @@
       "value": ""
     },
     {
-      "name": "OFFLINE_PARTITION_TOPIC",
+      "name": "KAFKA_CLUSTER_URL",
+      "value": ""
+    },
+    {
+      "name": "PATH_TO_KAFKA_LOGS",
+      "value": ""
+    },
+    {
+      "name": "NUM_PARTITIONS",
       "value": ""
     },
     {
@@ -52,13 +44,13 @@
       "name": "cell_1",
       "type": "MARKDOWN",
       "enabled": true,
-      "content": "## Kafka Offline Partition Detected\nThis incident type occurs when a partition in a Kafka cluster is offline, meaning that it is not currently being served by an active leader. This can cause disruptions to data processing and delivery, and requires investigation and resolution to ensure that the cluster is functioning properly."
+      "content": "## Kafka Offline Partition Detected.\nWhen a Kafka partition becomes offline, it means that the partition is no longer available for reading and writing data. This can occur due to various reasons such as hardware failure, network issues, or software bugs. When a Kafka offline partition is detected, it can impact the availability and reliability of the entire system. It is important to quickly troubleshoot and resolve the issue to minimize the impact on the system."
     },
     {
       "name": "cell_2",
       "type": "MARKDOWN",
       "enabled": true,
-      "content": "## Step 1: Check if Kafka is running"
+      "content": "## 1. Check if Kafka service is running"
     },
     {
       "name": "cell_3",
@@ -70,73 +62,85 @@
       "name": "cell_4",
       "type": "MARKDOWN",
       "enabled": true,
-      "content": "## Step 2: Check the status of the offline partition"
+      "content": "## 2. List all topics in the cluster"
     },
     {
       "name": "cell_5",
       "type": "OP_LANG",
       "enabled": true,
-      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `/kafka-topics.sh --describe --zookeeper ${ZOOKEEPER_URL} --topic ${OFFLINE_PARTITION_TOPIC}`"
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `kafka-topics.sh --bootstrap-server ${BOOTSTRAP_SERVER} --list`"
     },
     {
       "name": "cell_6",
       "type": "MARKDOWN",
       "enabled": true,
-      "content": "## Step 3: Check the replication factor for the topic"
+      "content": "## 3. Describe the topic to see the number of partitions and their status"
     },
     {
       "name": "cell_7",
       "type": "OP_LANG",
       "enabled": true,
-      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `/kafka-topics.sh --zookeeper ${ZOOKEEPER_URL}  --describe --topic ${OFFLINE_PARTITION_TOPIC} | grep ReplicationFactor`"
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `kafka-topics.sh --bootstrap-server ${BOOTSTRAP_SERVER} --describe --topic ${TOPIC_NAME}`"
     },
     {
       "name": "cell_8",
       "type": "MARKDOWN",
       "enabled": true,
-      "content": "## Step 4: Check the ISR count for the topic"
+      "content": "## 4. Check the status of all partitions for a topic"
     },
     {
       "name": "cell_9",
       "type": "OP_LANG",
       "enabled": true,
-      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `/kafka-topics.sh --zookeeper ${ZOOKEEPER_URL}  --describe --topic ${OFFLINE_PARTITION_TOPIC} | grep \"Isr:\"`"
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `kafka-topics.sh --bootstrap-server ${BOOTSTRAP_SERVER} --describe --topic ${TOPIC_NAME} | grep Partition`"
     },
     {
       "name": "cell_10",
       "type": "MARKDOWN",
       "enabled": true,
-      "content": "## Step 5: Check the Kafka logs for any errors or warnings related to the offline partition"
+      "content": "## 5. Check the status of a specific partition"
     },
     {
       "name": "cell_11",
       "type": "OP_LANG",
       "enabled": true,
-      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `tail -f /opt/kafka/logs/server.log | grep ${OFFLINE_PARTITION_TOPIC}`"
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `kafka-log-dirs.sh --describe --bootstrap-server ${BOOTSTRAP_SERVER} --topic-list ${TOPIC_NAME} --partition-list ${PARTITION_NUMBER}`"
     },
     {
       "name": "cell_12",
       "type": "MARKDOWN",
       "enabled": true,
-      "content": "## Kafka broker nodes are overloaded or underprovisioned."
+      "content": "## 6. Check if the broker hosting the partition is offline"
     },
     {
       "name": "cell_13",
       "type": "OP_LANG",
       "enabled": true,
-      "content": "host | host_name=$HOST_NAME | invoke_kafka_partition_check($TOPIC_NAME, $PARTITION_NUMBER)"
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `kafka-topics.sh --bootstrap-server ${BOOTSTRAP_SERVER} --describe --topic ${TOPIC_NAME} | grep ${PARTITION_NUMBER} | awk '{print $6}' | cut -d: -f1 | xargs -I {} sh -c '${PATH_TO_KAFKA_BIN}/kafka-broker-api-versions.sh --bootstrap-server {}:9092 --version'`"
     },
     {
       "name": "cell_14",
       "type": "MARKDOWN",
       "enabled": true,
-      "content": "## Increase the replication factor of the Kafka topic where the offline partition occurred. This will create additional replicas of the partition and reduce the likelihood of data loss."
+      "content": "## 7. Check the logs for any error messages related to the partition"
     },
     {
       "name": "cell_15",
       "type": "OP_LANG",
       "enabled": true,
-      "content": "host | host_name=$HOST_NAME | invoke_increase_kafka_topic_replication($NEW_REPLICATION_FACTOR, $PARTITION_COUNT, $ZOOKEEPER_URL, $TOPIC_NAME)"
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `tail -n 100 ${PATH_TO_KAFKA_LOGS}/server.log | grep ${TOPIC_NAME} | grep ${PARTITION_NUMBER}`"
+    },
+    {
+      "name": "cell_16",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Rebalance the partitions: If the partition is offline due to an imbalance in the Kafka cluster, rebalancing the partitions can help bring the partition back online."
+    },
+    {
+      "name": "cell_17",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "host | host_name=$HOST_NAME | invoke_rebalance_partitions($BOOTSTRAP_SERVER, $TOPIC_NAME, $NUM_PARTITIONS)"
     }
   ]
 }
